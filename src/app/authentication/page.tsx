@@ -1,11 +1,23 @@
 import LoginForm from "./components/login-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import z from "zod";
 import SignUpForm from "./components/sign-up-form";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-const AuthenticationPage = () => {
+const AuthenticationPage = async () => {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  /**
+   * Se o usuário já estiver logado, redireciona para o dashboard.
+   * Isso garante que usuários autenticados não consigam acessar a página de autenticação enquanto estiverem logados.
+   */
+  if (session?.user) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="flex h-screen w-screen items-center justify-center">
       <Tabs defaultValue="login" className="w-[400px]">
