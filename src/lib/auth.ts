@@ -1,7 +1,11 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { customSession } from "better-auth/plugins";
+
 import * as schema from "@/db/schema";
 import { db } from "@/db";
+import { usersToClinicsTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -16,6 +20,29 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
   },
+  plugins: [
+    customSession(async ({ user, session }) => {
+      const clinics = await db.query.usersToClinicsTable.findMany({
+        where: eq(usersToClinicsTable.userId, user.id),
+        with: { clinic: true },
+      });
+      /**
+       * TODO: Ao adaptar para o usuário ter múltiplas clínicas, precisamos pensar em como lidar com isso na sessão.
+       * Por enquanto, vamos pegar a primeira clínica associada ao usuário.
+       * */
+      const clinic = clinics[0];
+      return {
+        user: {
+          ...user,
+          clinic: {
+            id: clinic?.clinicId,
+            name: clinic?.clinic.name,
+          },
+        },
+        session,
+      };
+    }),
+  ],
   user: {
     modelName: "usersTable",
   },
